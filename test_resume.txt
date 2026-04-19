@@ -1,0 +1,25 @@
+Иван Иванов
+Email: ivan.ivanov@email.com
+Телефон: +7 (999) 123-45-67
+
+ОПЫТ РАБОТЫ
+Senior Python Developer, ООО "Технологии будущего" (2020 - настоящее время)
+- Разработка микросервисов на Python и FastAPI
+- Работа с PostgreSQL, Redis, Docker
+- Внедрение CI/CD на GitLab
+- Оптимизация производительности API (ускорение в 3 раза)
+
+Python Developer, ЗАО "ИТ-Решения" (2017 - 2020)
+- Разработка веб-приложений на Django
+- Интеграция с внешними API
+- Написание unit-тестов (pytest)
+
+НАВЫКИ
+Python, FastAPI, Django, PostgreSQL, MySQL, MongoDB, Redis, Docker, Kubernetes, Git, Linux, Nginx, REST API, GraphQL, pytest, Celery, RabbitMQ
+
+ОБРАЗОВАНИЕ
+МГУ им. Ломоносова, факультет ВМК (2012 - 2017)
+Специальность: Прикладная математика и информатика
+
+ЯЗЫКИ
+Русский (родной), Английский (Upper-Intermediate)
