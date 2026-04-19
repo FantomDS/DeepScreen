@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Python
 __pycache__/
 *.py[cod]
@@ -32,4 +33,40 @@ Thumbs.db
 # Databases
 *.db
 *.sqlite3
+=======
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# API Keys
+.env
+
+# Streamlit
+.streamlit/
+
+# Uploaded files
+data/uploads/*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Databases
+*.db
+*.sqlite3
+>>>>>>> 5c3629e5d0a871d9a4a3e69489dfd8cd17e69293
 chroma_db/
