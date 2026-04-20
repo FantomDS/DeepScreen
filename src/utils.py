@@ -1,7 +1,3 @@
-"""
-Вспомогательные функции для проекта.
-"""
-
 import os
 import shutil
 import tempfile
@@ -12,27 +8,15 @@ import pandas as pd
 
 
 def save_uploaded_files(uploaded_files) -> List[str]:
-    """
-    Сохраняет загруженные файлы во временную директорию.
-    
-    Args:
-        uploaded_files: Файлы из st.file_uploader
-        
-    Returns:
-        List[str]: Список путей к сохраненным файлам
-    """
-    # Создаем временную директорию в сессии
     if 'temp_dir' not in st.session_state:
         st.session_state.temp_dir = tempfile.mkdtemp()
     
     saved_paths = []
     
     for uploaded_file in uploaded_files:
-        # Очищаем имя файла
         safe_filename = "".join(c for c in uploaded_file.name if c.isalnum() or c in '._- ')
         file_path = os.path.join(st.session_state.temp_dir, safe_filename)
-        
-        # Сохраняем файл
+
         with open(file_path, 'wb') as f:
             f.write(uploaded_file.getbuffer())
         
@@ -42,7 +26,6 @@ def save_uploaded_files(uploaded_files) -> List[str]:
 
 
 def cleanup_temp_files():
-    """Удаляет временные файлы."""
     if 'temp_dir' in st.session_state:
         try:
             shutil.rmtree(st.session_state.temp_dir)
@@ -52,15 +35,6 @@ def cleanup_temp_files():
 
 
 def create_results_dataframe(results: List[dict]) -> pd.DataFrame:
-    """
-    Создает pandas DataFrame из результатов анализа.
-    
-    Args:
-        results: Список результатов анализа
-        
-    Returns:
-        pd.DataFrame: Таблица с результатами
-    """
     rows = []
     
     for r in results:
@@ -85,15 +59,6 @@ def create_results_dataframe(results: List[dict]) -> pd.DataFrame:
 
 
 def get_score_color(score: int) -> str:
-    """
-    Возвращает цвет для отображения score.
-    
-    Args:
-        score: Процент соответствия
-        
-    Returns:
-        str: CSS-цвет
-    """
     if score >= 80:
         return '#28a745'  # Зеленый
     elif score >= 60:
@@ -103,15 +68,6 @@ def get_score_color(score: int) -> str:
 
 
 def format_skills_list(skills: List[str]) -> str:
-    """
-    Форматирует список навыков для отображения.
-    
-    Args:
-        skills: Список навыков
-        
-    Returns:
-        str: Отформатированная строка
-    """
     if not skills:
         return "Навыки не найдены"
     return " • ".join(skills[:10]) + (" ..." if len(skills) > 10 else "")

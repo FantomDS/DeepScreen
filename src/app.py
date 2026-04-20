@@ -1,14 +1,8 @@
-"""
-Главное приложение DeepScreen AI.
-Автоматический скрининг резюме с использованием ИИ.
-"""
-
 import streamlit as st
 import pandas as pd
 from pathlib import Path
 import time
 
-# Импорт модулей проекта
 from resume_parser import ResumeParser
 from ai_analyzer import AIResumeAnalyzer
 from utils import (
@@ -19,8 +13,6 @@ from utils import (
     format_skills_list
 )
 
-
-# Настройка страницы
 st.set_page_config(
     page_title="DeepScreen AI",
     page_icon="🎯",
@@ -28,8 +20,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
-# CSS стили
 st.markdown("""
 <style>
     .main-header {
@@ -75,22 +65,58 @@ st.markdown("""
         color: #999;
         border-top: 1px solid #eee;
     }
+    .stat-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+    }
+    .stat-box-green {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+    }
+    .stat-box-orange {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+    }
+    .stat-box-blue {
+        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+    .stat-label {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 
 def init_session_state():
-    """Инициализация состояния сессии Streamlit."""
     if 'analysis_results' not in st.session_state:
         st.session_state.analysis_results = None
     if 'analyzer' not in st.session_state:
         st.session_state.analyzer = None
     if 'analyzing' not in st.session_state:
         st.session_state.analyzing = False
+    if 'model_connected' not in st.session_state:
+        st.session_state.model_connected = False
 
 
 def main():
-    """Главная функция приложения."""
     
     init_session_state()
     
@@ -100,69 +126,138 @@ def main():
         '<div class="sub-header">Интеллектуальный скрининг резюме с помощью ИИ</div>',
         unsafe_allow_html=True
     )
-
-    # Боковая панель
+    
     with st.sidebar:
         st.header("⚙️ Настройки")
         
-        # Выбор модели Ollama
         st.subheader("🤖 Модель LLM")
         
-        # Получаем доступные модели
-        try:
-            from ai_analyzer import AIResumeAnalyzer
-            available_models = AIResumeAnalyzer.get_available_models()
-            
-            if available_models:
-                model_options = list(available_models.keys())
-                selected_model = st.selectbox(
-                    "Выберите модель",
-                    options=model_options,
-                    help="Локальные модели через Ollama"
-                )
-                
-                # Показываем информацию о модели
-                if selected_model in available_models:
-                    info = available_models[selected_model]
-                    st.caption(f"📦 Размер: {info['size_gb']} GB")
-                    if info.get('description'):
-                        st.caption(f"📝 {info['description']}")
-            else:
-                selected_model = st.text_input(
-                    "Название модели",
-                    value="qwen2.5:7b",
-                    help="Например: llama3.2, qwen2.5:7b, gemma2:9b"
-                )
-                st.warning("⚠️ Ollama не запущен или нет моделей")
-                
-        except Exception as e:
-            selected_model = "qwen2.5:7b"
-            st.error(f"Ошибка подключения к Ollama: {str(e)}")
-            st.info("Убедитесь, что Ollama установлен и запущен")
+        selected_model = st.selectbox(
+            "Выберите модель",
+            options=["qwen2.5:7b", "llama3.2", "gemma2:9b", "mistral", "llama3.1:8b"],
+            index=0,
+            help="Локальные модели через Ollama"
+        )
         
-        # Кнопка проверки подключения
-        if st.button("🔌 Проверить подключение"):
-            try:
-                analyzer = AIResumeAnalyzer(model_name=selected_model)
-                st.session_state.analyzer = analyzer
-                st.success(f"✅ Подключено к {selected_model}")
-            except Exception as e:
-                st.error(f"❌ Ошибка: {str(e)}")
+        custom_model = st.text_input(
+            "Или укажите свою модель",
+            placeholder="например: qwen2.5:7b",
+            help="Введите название модели, установленной в Ollama"
+        )
         
-        # Автоматическая инициализация
-        if 'analyzer' not in st.session_state or st.session_state.analyzer is None:
-            try:
-                st.session_state.analyzer = AIResumeAnalyzer(model_name=selected_model)
-            except Exception as e:
-                pass  # Будет показано при проверке
+        if custom_model:
+            selected_model = custom_model
+        
+        col_btn1, col_btn2 = st.columns([2, 1])
+        with col_btn1:
+            if st.button("🔌 Подключить модель", use_container_width=True):
+                with st.spinner("Подключение к Ollama..."):
+                    try:
+                        st.session_state.analyzer = AIResumeAnalyzer(model_name=selected_model)
+                        st.session_state.model_connected = True
+                        st.success(f"✅ Подключено к **{selected_model}**")
+                    except Exception as e:
+                        st.session_state.model_connected = False
+                        st.error(f"❌ Ошибка подключения")
+                        st.info(f"```{str(e)}```")
+        
+        with col_btn2:
+            if st.button("🔄", help="Проверить статус", use_container_width=True):
+                try:
+                    import ollama
+                    models = ollama.list()
+                    model_names = [m.get('name', '') for m in models.get('models', [])]
+                    if model_names:
+                        st.success(f"✅ Доступно моделей: {len(model_names)}")
+                        with st.expander("Список моделей"):
+                            for m in model_names:
+                                st.text(f"• {m}")
+                    else:
+                        st.warning("⚠️ Нет доступных моделей")
+                except Exception as e:
+                    st.error("❌ Ollama не запущен")
+        
+        # Статус подключения
+        if st.session_state.model_connected:
+            st.success(f"🟢 Подключено: **{selected_model}**")
+        else:
+            st.warning("🟡 Модель не подключена")
         
         st.divider()
+        
+        # Инструкция по установке
+        with st.expander("📚 Как установить Ollama"):
+            st.markdown("""
+            ### Установка Ollama
+            
+            **1. Скачайте и установите:**
+            - Перейдите на [ollama.com](https://ollama.com/)
+            - Скачайте версию для вашей ОС
+            - Установите и запустите
+            
+            **2. Скачайте модель:**
+            ```bash
+            # Рекомендуемая для русского языка:
+            ollama pull qwen2.5:7b
+            
+            # Английский:
+            ollama pull llama3.2
+            ```
+            
+            **3. Проверьте установку:**
+            ```bash
+            ollama list
+            ```
+            
+            **4. Запустите сервер (если не запущен):**
+            ```bash
+            ollama serve
+            ```
+            """)
+        
+        st.divider()
+        
+        # Информация о приватности
+        with st.expander("🔒 Приватность и безопасность"):
+            st.markdown("""
+            ### Ваши данные в безопасности
+            
+            - ✅ **100% локальная обработка**
+            - ✅ Данные **НЕ** отправляются в интернет
+            - ✅ Файлы удаляются после анализа
+            - ✅ Никакой телеметрии
+            
+            **DeepScreen AI** работает полностью на вашем компьютере.
+            """)
+        
+        st.divider()
+        
+        # Инструкция
+        st.markdown("""
+        ### 📋 Инструкция
+        
+        1. ✅ Подключите модель
+        2. 📎 Загрузите резюме (PDF/DOCX/TXT)
+        3. 📝 Вставьте описание вакансии
+        4. 🚀 Нажмите "Начать анализ"
+        
+        ---
+        
+        ### 📊 Оценки
+        
+        | % | Значение |
+        |:---:|:---|
+        | 🟢 80-100 | Отлично |
+        | 🟡 60-79 | Хорошо |
+        | 🔴 0-59 | Низко |
+        """)
     
     # Основная область
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.subheader("📎 Загрузка резюме")
+        
         uploaded_files = st.file_uploader(
             "Выберите файлы резюме",
             type=['pdf', 'docx', 'txt'],
@@ -171,12 +266,13 @@ def main():
         )
         
         if uploaded_files:
-            st.success(f"Загружено файлов: {len(uploaded_files)}")
+            st.success(f"📁 Загружено файлов: **{len(uploaded_files)}**")
             
-            # Показываем список загруженных файлов
             with st.expander("📋 Список загруженных файлов"):
                 for i, f in enumerate(uploaded_files, 1):
-                    st.text(f"{i}. {f.name}")
+                    st.text(f"{i}. {f.name} ({f.size // 1024} КБ)")
+        else:
+            st.info("👆 Загрузите одно или несколько резюме для анализа")
     
     with col2:
         st.subheader("📝 Описание вакансии")
@@ -184,27 +280,46 @@ def main():
         job_title = st.text_input(
             "Название должности",
             placeholder="Например: Senior Python Developer",
-            help="Укажите название вакансии"
+            help="Укажите название вакансии для более точного анализа"
         )
         
         job_description = st.text_area(
             "Описание вакансии",
-            placeholder="Вставьте текст вакансии: требования, обязанности, условия...",
+            placeholder="Вставьте текст вакансии, включая:\n- Обязанности\n- Требования к кандидату\n- Необходимые навыки\n- Условия работы\n\nЧем подробнее описание, тем точнее будет анализ.",
             height=200,
-            help="Чем подробнее описание, тем точнее будет анализ"
+            help="Подробное описание повышает точность анализа"
         )
+        
+        if job_description:
+            char_count = len(job_description)
+            st.caption(f"📝 Символов: {char_count}")
     
     # Кнопка анализа
     st.divider()
     
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
+        analyze_disabled = not (
+            uploaded_files 
+            and job_description 
+            and st.session_state.analyzer 
+            and st.session_state.model_connected
+        )
+        
         analyze_button = st.button(
             "🚀 Начать анализ резюме",
             type="primary",
             use_container_width=True,
-            disabled=not (uploaded_files and job_description and st.session_state.analyzer)
+            disabled=analyze_disabled
         )
+        
+        if analyze_disabled:
+            if not st.session_state.model_connected:
+                st.warning("⚠️ Сначала подключите модель в боковой панели")
+            elif not uploaded_files:
+                st.info("📎 Загрузите резюме")
+            elif not job_description:
+                st.info("📝 Введите описание вакансии")
     
     # Логика анализа
     if analyze_button and uploaded_files and job_description and st.session_state.analyzer:
@@ -237,7 +352,7 @@ def main():
                     'extracted_name': name
                 })
             except Exception as e:
-                st.error(f"Ошибка парсинга {Path(file_path).name}: {str(e)}")
+                st.error(f"❌ Ошибка парсинга {Path(file_path).name}: {str(e)}")
                 resumes_data.append({
                     'file_name': Path(file_path).name,
                     'text': f"[Ошибка парсинга: {str(e)}]",
@@ -248,7 +363,7 @@ def main():
         # ИИ-анализ
         progress_bar.progress(1.0, text="🤖 ИИ-анализ резюме...")
         
-        with st.spinner("🤖 Искусственный интеллект анализирует резюме..."):
+        with st.spinner("🤖 Искусственный интеллект анализирует резюме... Это может занять некоторое время."):
             try:
                 # Подготовка данных для анализа
                 resumes_for_analysis = [
@@ -294,14 +409,38 @@ def main():
         medium_match = sum(1 for r in results if 60 <= r.get('match_score', 0) < 80)
         
         col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+        
         with col_stat1:
-            st.metric("Всего резюме", total)
+            st.markdown(f"""
+            <div class="stat-box-blue">
+                <div class="stat-number">{total}</div>
+                <div class="stat-label">Всего резюме</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
         with col_stat2:
-            st.metric("Успешно обработано", success_count)
+            st.markdown(f"""
+            <div class="stat-box-green">
+                <div class="stat-number">{success_count}</div>
+                <div class="stat-label">Обработано</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
         with col_stat3:
-            st.metric("Отличное совпадение (80%+)", high_match)
+            st.markdown(f"""
+            <div class="stat-box">
+                <div class="stat-number">{high_match}</div>
+                <div class="stat-label">Отлично (80%+)</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
         with col_stat4:
-            st.metric("Хорошее совпадение (60%+)", medium_match)
+            st.markdown(f"""
+            <div class="stat-box-orange">
+                <div class="stat-number">{medium_match}</div>
+                <div class="stat-label">Хорошо (60%+)</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         st.divider()
         
@@ -335,9 +474,15 @@ def main():
             score = result.get('match_score', 0)
             score_color = get_score_color(score)
             
+            if score >= 80:
+                emoji = "🟢"
+            elif score >= 60:
+                emoji = "🟡"
+            else:
+                emoji = "🔴"
+            
             with st.expander(
-                f"{'🟢' if score >= 80 else '🟡' if score >= 60 else '🔴'} "
-                f"{result.get('file_name', 'Неизвестно')} - "
+                f"{emoji} {result.get('file_name', 'Неизвестно')} - "
                 f"Соответствие: {score}% - "
                 f"{result.get('recommendation', 'Нет рекомендации')}"
             ):
@@ -376,35 +521,54 @@ def main():
                     missing = result.get('missing_skills', [])
                     if missing:
                         st.markdown("#### ⚠️ Отсутствующие навыки")
-                        st.write(", ".join(missing))
+                        for skill in missing[:5]:
+                            st.markdown(f"- ❌ {skill}")
                     
                     # Плюсы и минусы
                     col_pros, col_cons = st.columns(2)
                     with col_pros:
                         st.markdown("#### ✅ Сильные стороны")
-                        for pro in result.get('pros', []):
-                            st.markdown(f"- {pro}")
+                        pros = result.get('pros', [])
+                        if pros:
+                            for pro in pros:
+                                st.markdown(f"- {pro}")
+                        else:
+                            st.info("Нет данных")
                     
                     with col_cons:
                         st.markdown("#### ❌ Слабые стороны")
-                        for con in result.get('cons', []):
-                            st.markdown(f"- {con}")
+                        cons = result.get('cons', [])
+                        if cons:
+                            for con in cons:
+                                st.markdown(f"- {con}")
+                        else:
+                            st.info("Нет данных")
                 
                 with col_right:
                     # Контакты
                     contacts = result.get('contacts', {})
-                    extracted_name = result.get('extracted_name')
+                    extracted_name = result.get('extracted_name') or result.get('candidate_name')
                     
                     st.markdown("#### 📞 Контакты")
+                    
                     if extracted_name:
-                        st.write(f"**Имя:** {extracted_name}")
+                        st.markdown(f"**👤 Имя:** {extracted_name}")
+                    
                     if contacts.get('email'):
-                        st.write(f"**Email:** {contacts['email']}")
+                        st.markdown(f"**📧 Email:** {contacts['email']}")
+                    
                     if contacts.get('phone'):
-                        st.write(f"**Телефон:** {contacts['phone']}")
+                        st.markdown(f"**📱 Телефон:** {contacts['phone']}")
                     
                     if not contacts.get('email') and not contacts.get('phone'):
                         st.info("Контакты не найдены")
+                    
+                    st.divider()
+                    
+                    # Опыт
+                    years = result.get('total_experience_years')
+                    if years:
+                        st.markdown(f"**⏱️ Опыт:** {years} лет")
         
         # Экспорт результатов
         st.divider()
@@ -416,7 +580,7 @@ def main():
             if r.get('status') != 'error':
                 csv_data.append({
                     'Файл': r.get('file_name', ''),
-                    'Имя': r.get('extracted_name', ''),
+                    'Имя': r.get('extracted_name') or r.get('candidate_name', ''),
                     'Email': r.get('contacts', {}).get('email', ''),
                     'Телефон': r.get('contacts', {}).get('phone', ''),
                     'Соответствие': r.get('match_score', 0),
@@ -429,18 +593,22 @@ def main():
             df_export = pd.DataFrame(csv_data)
             csv = df_export.to_csv(index=False).encode('utf-8-sig')
             
-            st.download_button(
-                label="📥 Скачать результаты (CSV)",
-                data=csv,
-                file_name=f"deepscreen_results_{time.strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
-            )
+            col_down1, col_down2, col_down3 = st.columns([1, 2, 1])
+            with col_down2:
+                st.download_button(
+                    label="📥 Скачать результаты (CSV)",
+                    data=csv,
+                    file_name=f"deepscreen_results_{time.strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
     
     # Футер
     st.markdown("""
     <div class="footer">
         DeepScreen AI — Интеллектуальный скрининг резюме<br>
-        Powered by OpenAI • Streamlit • Python
+        🎯 Powered by Ollama • Streamlit • Python 🐍<br>
+        <span style="font-size: 0.8rem;"></span>
     </div>
     """, unsafe_allow_html=True)
 
