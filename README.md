@@ -27,6 +27,10 @@ python3 -m venv venv
 #Активация
 source venv/bin/activate
 ```
+Установите все зависимости из файла
+```
+pip install -r requirements.txt
+```
 Запустите приложение
 ```
 streamlit run src/app.py
