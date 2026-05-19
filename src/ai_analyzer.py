@@ -122,7 +122,7 @@ class AIResumeAnalyzer:
     "skills_match": ["навык1", "навык2"],
     "missing_skills": ["отсутствующий1", "отсутствующий2"],
     "experience_summary": "краткое резюме опыта кандидата (1-2 предложения)",
-    "recommendation": "Пригласить на собеседование|Рассмотреть|Отклонить",
+    "recommendation": "Резюме готово к отправке|Требуются улучшения|Рекомендована переработка",
     "pros": ["сильная сторона 1", "сильная сторона 2"],
     "cons": ["слабая сторона 1", "риск 1"],
     "candidate_name": "имя кандидата или null",
@@ -194,7 +194,7 @@ class AIResumeAnalyzer:
                     normalized[key] = str(result[key]) if result[key] else ''
                 elif key == 'recommendation':
                     rec = str(result[key])
-                    valid_recs = ['Пригласить на собеседование', 'Рассмотреть', 'Отклонить']
+                    valid_recs = ['Резюме готово к отправке', 'Требуются улучшения', 'Рекомендована переработка']
                     normalized[key] = rec if rec in valid_recs else 'Рассмотреть'
                 else:
                     normalized[key] = result[key]
