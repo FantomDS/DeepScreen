@@ -486,89 +486,231 @@ def main():
                 f"Соответствие: {score}% - "
                 f"{result.get('recommendation', 'Нет рекомендации')}"
             ):
-                col_left, col_right = st.columns([2, 1])
+                # Вкладки для разных режимов просмотра
+                tab1, tab2, tab3 = st.tabs(["📊 Анализ", "📝 Рекомендации", "✅ Чек-лист"])
                 
-                with col_left:
-                    st.markdown(f"""
-                    <div class="candidate-card">
-                        <h3>📄 {result.get('file_name', 'Неизвестно')}</h3>
-                        
-                        <p><strong>📊 Соответствие:</strong> 
-                        <span style="color: {score_color}; font-weight: bold; font-size: 1.3rem;">
-                            {score}%
-                        </span>
-                        </p>
-                        
-                        <p><strong>💡 Рекомендация:</strong> {result.get('recommendation', 'Не определена')}</p>
-                        
-                        <p><strong>📝 Опыт:</strong> {result.get('experience_summary', 'Нет данных')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                with tab1:
+                    col_left, col_right = st.columns([2, 1])
                     
-                    # Навыки
-                    st.markdown("#### 🛠 Навыки")
-                    skills = result.get('skills_match', [])
-                    if skills:
-                        skills_html = ''.join([
-                            f'<span class="skill-tag">{skill}</span>'
-                            for skill in skills[:15]
-                        ])
-                        st.markdown(f'<div>{skills_html}</div>', unsafe_allow_html=True)
+                    with col_left:
+                        st.markdown(f"""
+                        <div class="candidate-card">
+                            <h3>📄 {result.get('file_name', 'Неизвестно')}</h3>
+                            
+                            <p><strong>📊 Соответствие:</strong> 
+                            <span style="color: {score_color}; font-weight: bold; font-size: 1.3rem;">
+                                {score}%
+                            </span>
+                            </p>
+                            
+                            <p><strong>💡 Рекомендация:</strong> {result.get('recommendation', 'Не определена')}</p>
+                            
+                            <p><strong>📝 Опыт:</strong> {result.get('experience_summary', 'Нет данных')}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Навыки
+                        st.markdown("#### 🛠 Навыки")
+                        skills = result.get('skills_match', [])
+                        if skills:
+                            skills_html = ''.join([
+                                f'<span class="skill-tag">{skill}</span>'
+                                for skill in skills[:15]
+                            ])
+                            st.markdown(f'<div>{skills_html}</div>', unsafe_allow_html=True)
+                        else:
+                            st.info("Навыки не определены")
+                        
+                        # Отсутствующие навыки
+                        missing = result.get('missing_skills', [])
+                        if missing:
+                            st.markdown("#### ⚠️ Отсутствующие навыки")
+                            for skill in missing[:5]:
+                                st.markdown(f"- ❌ {skill}")
+                        
+                        # Плюсы и минусы
+                        col_pros, col_cons = st.columns(2)
+                        with col_pros:
+                            st.markdown("#### ✅ Сильные стороны")
+                            pros = result.get('pros', [])
+                            if pros:
+                                for pro in pros:
+                                    st.markdown(f"- {pro}")
+                            else:
+                                st.info("Нет данных")
+                        
+                        with col_cons:
+                            st.markdown("#### ❌ Слабые стороны")
+                            cons = result.get('cons', [])
+                            if cons:
+                                for con in cons:
+                                    st.markdown(f"- {con}")
+                            else:
+                                st.info("Нет данных")
+                    
+                    with col_right:
+                        contacts = result.get('contacts', {})
+                        extracted_name = result.get('extracted_name') or result.get('candidate_name')
+                        
+                        st.markdown("#### 📞 Контакты")
+                        if extracted_name:
+                            st.markdown(f"**👤 Имя:** {extracted_name}")
+                        if contacts.get('email'):
+                            st.markdown(f"**📧 Email:** {contacts['email']}")
+                        if contacts.get('phone'):
+                            st.markdown(f"**📱 Телефон:** {contacts['phone']}")
+                        if not contacts.get('email') and not contacts.get('phone'):
+                            st.info("Контакты не найдены")
+                        
+                        st.divider()
+                        years = result.get('total_experience_years')
+                        if years:
+                            st.markdown(f"**⏱️ Опыт:** {years} лет")
+                
+                with tab2:
+                    st.markdown("#### 📝 Рекомендации по улучшению резюме")
+                    
+                    # Генерируем рекомендации
+                    with st.spinner("🤖 Генерация рекомендаций..."):
+                        try:
+                            from resume_advisor import ResumeAdvisor
+                            
+                            # Получаем модель из состояния
+                            model_name = st.session_state.analyzer.model_name if st.session_state.analyzer else "qwen2.5:7b"
+                            advisor = ResumeAdvisor(model_name=model_name)
+                            
+                            # Получаем текст резюме
+                            resume_text = result.get('text', '')
+                            if not resume_text:
+                                resume_text = "Текст резюме недоступен"
+                            
+                            tips = advisor.generate_improvement_tips(
+                                resume_text=resume_text,
+                                job_description=job_description,
+                                job_title=job_title,
+                                current_score=score,
+                                missing_skills=result.get('missing_skills', [])
+                            )
+                            
+                            # Прогноз score
+                            predicted = tips.get('predicted_score_after', 0)
+                            if predicted > 0:
+                                col_pred1, col_pred2 = st.columns([1, 3])
+                                with col_pred1:
+                                    st.metric("Текущий score", f"{score}%")
+                                with col_pred2:
+                                    delta = predicted - score
+                                    st.metric(
+                                        "Прогноз после правок",
+                                        f"{predicted}%",
+                                        delta=f"+{delta}%" if delta > 0 else f"{delta}%"
+                                    )
+                                st.divider()
+                            
+                            # Критические исправления
+                            fixes = tips.get('critical_fixes', [])
+                            if fixes:
+                                for fix in fixes:
+                                    priority = fix.get('priority', 'recommended')
+                                    category = fix.get('category', 'wording')
+                                    
+                                    if priority == 'critical':
+                                        color = "#dc3545"
+                                        icon = "🔴"
+                                        label = "КРИТИЧНО"
+                                    elif priority == 'important':
+                                        color = "#ffc107"
+                                        icon = "🟡"
+                                        label = "ВАЖНО"
+                                    else:
+                                        color = "#28a745"
+                                        icon = "🟢"
+                                        label = "РЕКОМЕНДАЦИЯ"
+                                    
+                                    with st.container():
+                                        st.markdown(f"""
+                                        <div style="background-color: #f8f9fa; border-left: 4px solid {color}; padding: 1rem; margin: 0.5rem 0; border-radius: 5px;">
+                                            <p style="margin: 0;"><strong>{icon} {label}</strong> | Категория: {advisor.get_category_label(category)}</p>
+                                            <p style="margin: 0.5rem 0 0 0;"><strong>Проблема:</strong> {fix.get('problem', '')}</p>
+                                            <p style="margin: 0.5rem 0 0 0;"><strong>💡 Решение:</strong> {fix.get('solution', '')}</p>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                        
+                                        if fix.get('example_before') or fix.get('example_after'):
+                                            with st.expander("📝 Пример"):
+                                                if fix.get('example_before'):
+                                                    st.markdown(f"**Было:** ❌ `{fix['example_before']}`")
+                                                if fix.get('example_after'):
+                                                    st.markdown(f"**Стало:** ✅ `{fix['example_after']}`")
+                            
+                            # Ключевые слова
+                            keywords = tips.get('keywords_to_add', [])
+                            if keywords:
+                                st.markdown("#### 🔑 Ключевые слова для добавления")
+                                st.write(', '.join(keywords))
+                            
+                            # Слабые формулировки
+                            phrases = tips.get('phrases_to_remove', [])
+                            if phrases:
+                                st.markdown("#### ⚠️ Слабые формулировки (лучше заменить)")
+                                for phrase in phrases:
+                                    st.markdown(f"- ❌ {phrase}")
+                            
+                            # Сохраняем в сессию для чек-листа
+                            st.session_state[f'tips_{i}'] = tips
+                            
+                        except Exception as e:
+                            st.error(f"Ошибка генерации рекомендаций: {str(e)}")
+                            st.info("Убедитесь, что Ollama запущен и модель доступна")
+                
+                with tab3:
+                    st.markdown("#### ✅ Чек-лист для улучшения резюме")
+                    
+                    if f'tips_{i}' in st.session_state:
+                        tips = st.session_state[f'tips_{i}']
+                        
+                        from resume_advisor import ResumeAdvisor
+                        model_name = st.session_state.analyzer.model_name if st.session_state.analyzer else "qwen2.5:7b"
+                        advisor = ResumeAdvisor(model_name=model_name)
+                        
+                        checklist_data = advisor.generate_checklist(tips)
+                        checklist = checklist_data.get('checklist', [])
+                        
+                        if checklist:
+                            # Прогресс
+                            total = len(checklist)
+                            st.markdown(f"**Всего шагов:** {total}")
+                            
+                            # Каждый шаг
+                            for item in checklist:
+                                icon = item.get('icon', '⚪')
+                                priority = item.get('priority', '')
+                                action = item.get('action', '')
+                                category = item.get('category', '')
+                                
+                                st.markdown(f"""
+                                <div style="background-color: #f8f9fa; padding: 0.75rem; margin: 0.5rem 0; border-radius: 8px; display: flex; align-items: flex-start;">
+                                    <span style="font-size: 1.5rem; margin-right: 0.75rem;">{icon}</span>
+                                    <div>
+                                        <strong>Шаг {item['step']}</strong> | {advisor.get_category_label(category)}<br>
+                                        {action}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            
+                            # Прогноз
+                            predicted = checklist_data.get('predicted_score_after', 0)
+                            if predicted > 0:
+                                delta = predicted - score
+                                st.markdown(f"""
+                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border-radius: 10px; text-align: center; margin-top: 1rem;">
+                                    <p style="margin: 0; font-size: 1.2rem;">📈 Прогнозируемый score после всех правок: <strong>{predicted}%</strong> (+{delta}%)</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.info("Не удалось сформировать чек-лист. Проверьте вкладку 'Рекомендации'.")
                     else:
-                        st.info("Навыки не определены")
-                    
-                    # Отсутствующие навыки
-                    missing = result.get('missing_skills', [])
-                    if missing:
-                        st.markdown("#### ⚠️ Отсутствующие навыки")
-                        for skill in missing[:5]:
-                            st.markdown(f"- ❌ {skill}")
-                    
-                    # Плюсы и минусы
-                    col_pros, col_cons = st.columns(2)
-                    with col_pros:
-                        st.markdown("#### ✅ Сильные стороны")
-                        pros = result.get('pros', [])
-                        if pros:
-                            for pro in pros:
-                                st.markdown(f"- {pro}")
-                        else:
-                            st.info("Нет данных")
-                    
-                    with col_cons:
-                        st.markdown("#### ❌ Слабые стороны")
-                        cons = result.get('cons', [])
-                        if cons:
-                            for con in cons:
-                                st.markdown(f"- {con}")
-                        else:
-                            st.info("Нет данных")
-                
-                with col_right:
-                    # Контакты
-                    contacts = result.get('contacts', {})
-                    extracted_name = result.get('extracted_name') or result.get('candidate_name')
-                    
-                    st.markdown("#### 📞 Контакты")
-                    
-                    if extracted_name:
-                        st.markdown(f"**👤 Имя:** {extracted_name}")
-                    
-                    if contacts.get('email'):
-                        st.markdown(f"**📧 Email:** {contacts['email']}")
-                    
-                    if contacts.get('phone'):
-                        st.markdown(f"**📱 Телефон:** {contacts['phone']}")
-                    
-                    if not contacts.get('email') and not contacts.get('phone'):
-                        st.info("Контакты не найдены")
-                    
-                    st.divider()
-                    
-                    # Опыт
-                    years = result.get('total_experience_years')
-                    if years:
-                        st.markdown(f"**⏱️ Опыт:** {years} лет")
+                        st.info("Сначала откройте вкладку 'Рекомендации' для генерации советов.")
         
         # Экспорт результатов
         st.divider()
