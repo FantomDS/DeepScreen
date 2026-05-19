@@ -5,6 +5,7 @@ import time
 
 from resume_parser import ResumeParser
 from ai_analyzer import AIResumeAnalyzer
+from resume_advisor import ResumeAdvisor
 from utils import (
     save_uploaded_files,
     cleanup_temp_files,
